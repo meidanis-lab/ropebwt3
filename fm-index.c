@@ -382,7 +382,7 @@ void rb3_fmi_rank2a_cached(const rb3_fmi_t *fmi, void *rc_, int64_t k, int64_t l
  ***************/
 
 // [modified]
-void rb3_fmd_extend_cached(const rb3_fmi_t *f, void *rc, const rb3_sai_t *ik, rb3_sai_t ok[RB3_ASIZE])
+void rb3_fmd_extend_cached(const rb3_fmi_t *f, void *rc, const rb3_sai_t *ik, rb3_sai_t ok[RB3_ASIZE], int is_back)
 {
 	int64_t tk[RB3_ASIZE], tl[RB3_ASIZE];
 	int c;
@@ -397,7 +397,7 @@ void rb3_fmd_extend_cached(const rb3_fmi_t *f, void *rc, const rb3_sai_t *ik, rb
 // [modified]
 void rb3_fmd_extend(const rb3_fmi_t *f, const rb3_sai_t *ik, rb3_sai_t ok[RB3_ASIZE], int is_back)
 {
-	rb3_fmd_extend_cached(f, NULL, ik, ok);
+	rb3_fmd_extend_cached(f, NULL, ik, ok, 0);
 }
 
 static void rb3_sai_reverse(rb3_sai_t *a, int64_t l)
