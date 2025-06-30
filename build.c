@@ -133,39 +133,40 @@ static int usage_build(FILE *fp, const rb3_bopt_t *opt)
 	return fp == stdout? 0 : 1;
 }
 
-int main_build(int argc, char *argv[])
+int main_build(int argc, char *argv[]) // modified fuction 
 {
-	rb3_bopt_t opt;
-	kstring_t seq = {0,0,0};
-	int32_t c, i;
-	ketopt_t o = KETOPT_INIT;
-	mrope_t *r = 0;
-	char *fn_in = 0, *fn_tmp = 0;
+    rb3_bopt_t opt;
+    kstring_t seq = {0,0,0};
+    int32_t c, i;
+    ketopt_t o = KETOPT_INIT;
+    mrope_t *r = 0;
+    char *fn_in = 0, *fn_tmp = 0;
 
-	rb3_bopt_init(&opt);
-	while ((c = ketopt(&o, argc, argv, 1, "l:n:m:t:2sri:LFRo:dbTS:p:e", 0)) >= 0) {
-		// algorithm
+    rb3_bopt_init(&opt);
+    opt.flag |= RB3_BF_NO_REV; // [Modified] - added this line to set fm-index
+    while ((c = ketopt(&o, argc, argv, 1, "l:n:m:t:2sri:LFRo:dbTS:p:e", 0)) >= 0) {
+        // algorithm
 		if (c == 'm') opt.batch_size = rb3_parse_num(o.arg);
-		else if (c == 't') opt.n_threads = atoi(o.arg);
-		else if (c == 'p') opt.sais_threads = atoi(o.arg);
-		else if (c == 'l') opt.block_len = atoi(o.arg);
-		else if (c == 'n') opt.max_nodes = atoi(o.arg);
-		else if (c == '2') opt.flag |= RB3_BF_USE_RB2;
-		else if (c == 's') opt.flag |= RB3_BF_USE_RB2, opt.sort_order = MR_SO_RLO;
-		else if (c == 'r') opt.flag |= RB3_BF_USE_RB2, opt.sort_order = MR_SO_RCLO;
-		// input
+        else if (c == 't') opt.n_threads = atoi(o.arg);
+        else if (c == 'p') opt.sais_threads = atoi(o.arg);
+        else if (c == 'l') opt.block_len = atoi(o.arg);
+        else if (c == 'n') opt.max_nodes = atoi(o.arg);
+        else if (c == '2') opt.flag |= RB3_BF_USE_RB2;
+        else if (c == 's') opt.flag |= RB3_BF_USE_RB2, opt.sort_order = MR_SO_RLO;
+        else if (c == 'r') opt.flag |= RB3_BF_USE_RB2, opt.sort_order = MR_SO_RCLO;
+        // input
 		else if (c == 'i') fn_in = o.arg;
-		else if (c == 'L') opt.flag |= RB3_BF_LINE;
-		else if (c == 'F') opt.flag |= RB3_BF_NO_FOR;
-		else if (c == 'R') opt.flag |= RB3_BF_NO_REV;
-		// output
+        else if (c == 'L') opt.flag |= RB3_BF_LINE;
+        else if (c == 'F') opt.flag |= RB3_BF_NO_FOR;
+        else if (c == 'R') opt.flag |= RB3_BF_NO_REV;
+        // output
 		else if (c == 'o') freopen(o.arg, "wb", stdout);
-		else if (c == 'd') opt.fmt = RB3_FMD;
-		else if (c == 'b') opt.fmt = RB3_FMR;
-		else if (c == 'T') opt.fmt = RB3_TREE;
-		else if (c == 'e') opt.fmt = RB3_BRE;
-		else if (c == 'S') fn_tmp = o.arg;
-	}
+        else if (c == 'd') opt.fmt = RB3_FMR; // [Modified] - changed RB3_FMD to RB3_FMR
+		else if (c == 'b') opt.fmt = RB3_FMR; 
+        else if (c == 'T') opt.fmt = RB3_TREE;
+        else if (c == 'e') opt.fmt = RB3_BRE;
+        else if (c == 'S') fn_tmp = o.arg;
+    }
 	if (argc == o.ind && fn_in == 0)
 		return usage_build(stderr, &opt);
 
@@ -183,61 +184,62 @@ int main_build(int argc, char *argv[])
 			fprintf(stderr, "[M::%s::%.3f*%.2f] loaded the index from file '%s'\n", __func__, rb3_realtime(), rb3_percent_cpu(), fn_in);
 	}
 
-	if (argc - o.ind == 1 && opt.sais_threads > 0 && opt.n_threads - opt.sais_threads > 0) {
-		rb3_seqio_t *fp;
-		pipeline_t p;
-		fp = rb3_seq_open(argv[o.ind], !!(opt.flag&RB3_BF_LINE));
-		if (fp == 0) {
-			if (rb3_verbose >= 1)
-				fprintf(stderr, "ERROR: failed to open file '%s'\n", argv[o.ind]);
-			goto end_build;
-		}
-		memset(&p, 0, sizeof(p));
-		p.opt = &opt, p.fp = fp, p.r = r;
-		kt_pipeline(2, worker_pipeline, &p, 2);
-		r = p.r;
-		rb3_seq_close(fp);
-		goto end_build;
-	}
+    if (argc - o.ind == 1 && opt.sais_threads > 0 && opt.n_threads - opt.sais_threads > 0) {
+        rb3_seqio_t *fp;
+        pipeline_t p;
+        fp = rb3_seq_open(argv[o.ind], !!(opt.flag & RB3_BF_LINE));
+        if (fp == 0) {
+            if (rb3_verbose >= 1)
+                fprintf(stderr, "ERROR: failed to open file '%s'\n", argv[o.ind]);
+            goto end_build;
+        }
+        memset(&p, 0, sizeof(p));
+        p.opt = &opt, p.fp = fp, p.r = r;
+        kt_pipeline(2, worker_pipeline, &p, 2);
+        r = p.r;
+        rb3_seq_close(fp);
+        goto end_build;
+    }
 
-	for (i = o.ind; i < argc; ++i) {
-		rb3_seqio_t *fp;
-		int64_t n_seq = 0;
-		fp = rb3_seq_open(argv[i], !!(opt.flag&RB3_BF_LINE));
-		if (fp == 0) {
+    for (i = o.ind; i < argc; ++i) {
+        rb3_seqio_t *fp;
+        int64_t n_seq = 0;
+        fp = rb3_seq_open(argv[i], !!(opt.flag & RB3_BF_LINE));
+        if (fp == 0) {
 			if (rb3_verbose >= 1)
-				fprintf(stderr, "ERROR: failed to open file '%s'\n", argv[i]);
-			continue;
-		}
-		while ((n_seq = rb3_seq_read(fp, &seq, opt.batch_size, !(opt.flag&RB3_BF_NO_FOR), !(opt.flag&RB3_BF_NO_REV))) > 0) {
-			if (rb3_verbose >= 3) fprintf(stderr, "[M::%s::%.3f*%.2f] read %ld symbols from file '%s'\n", __func__, rb3_realtime(), rb3_percent_cpu(), (long)seq.l, argv[i]);
-			if (opt.flag & RB3_BF_USE_RB2) { // use the ropebwt2 algorithm
-				if (r == 0) r = mr_init(opt.max_nodes, opt.block_len, opt.sort_order);
-				rb3_reverse_all(seq.l, (uint8_t*)seq.s);
+            	fprintf(stderr, "ERROR: failed to open file '%s'\n", argv[i]);
+            continue;
+        }
+        while ((n_seq = rb3_seq_read(fp, &seq, opt.batch_size, 1, 0)) > 0) { // [Modified] - changed params to read only in one direction
+            if (rb3_verbose >= 3)
+                fprintf(stderr, "[M::%s::%.3f*%.2f] read %ld symbols from file '%s'\n", __func__, rb3_realtime(), rb3_percent_cpu(), (long)seq.l, argv[i]);
+            if (opt.flag & RB3_BF_USE_RB2) {
+                if (r == 0) r = mr_init(opt.max_nodes, opt.block_len, opt.sort_order);
+                // rb3_reverse_all(seq.l, (uint8_t*)seq.s); // [Modified] - removed reverse_all as it is not needed for the new format
 				mr_insert_multi(r, seq.l, (uint8_t*)seq.s, (opt.n_threads > 1));
-				if (rb3_verbose >= 3) fprintf(stderr, "[M::%s::%.3f*%.2f] inserted %ld symbols\n", __func__, rb3_realtime(), rb3_percent_cpu(), (long)seq.l);
-			} else { // use libsais
-				rb3_build_sais(n_seq, seq.l, seq.s, opt.n_threads);
-				if (rb3_verbose >= 3) fprintf(stderr, "[M::%s::%.3f*%.2f] constructed partial BWT for %ld symbols\n", __func__, rb3_realtime(), rb3_percent_cpu(), (long)seq.l);
-				if (r == 0) {
+                if (rb3_verbose >= 3) fprintf(stderr, "[M::%s::%.3f*%.2f] inserted %ld symbols\n", __func__, rb3_realtime(), rb3_percent_cpu(), (long)seq.l);
+            } else {
+                rb3_build_sais(n_seq, seq.l, seq.s, opt.n_threads);
+                if (rb3_verbose >= 3) fprintf(stderr, "[M::%s::%.3f*%.2f] constructed partial BWT for %ld symbols\n", __func__, rb3_realtime(), rb3_percent_cpu(), (long)seq.l);
+                if (r == 0) {
 					r = rb3_enc_plain2fmr(seq.l, (uint8_t*)seq.s, opt.max_nodes, opt.block_len, opt.n_threads);
-					if (rb3_verbose >= 3) fprintf(stderr, "[M::%s::%.3f*%.2f] encoded the partial BWT for %ld symbols\n", __func__, rb3_realtime(), rb3_percent_cpu(), (long)seq.l);
+					if (rb3_verbose >= 3) fprintf(stderr, "[M::%s::%.3f*%.2f] initialized the index with %ld symbols\n", __func__, rb3_realtime(), rb3_percent_cpu(), (long)seq.l);
 				} else {
 					rb3_fmi_merge_plain(r, seq.l, (uint8_t*)seq.s, opt.n_threads);
 					if (rb3_verbose >= 3) fprintf(stderr, "[M::%s::%.3f*%.2f] merged the partial BWT for %ld symbols\n", __func__, rb3_realtime(), rb3_percent_cpu(), (long)seq.l);
 				}
 			}
-		}
-		rb3_seq_close(fp);
-		if (fn_tmp) {
+        }
+        rb3_seq_close(fp);
+        if (fn_tmp) {
 			FILE *fp;
 			fp = fopen(fn_tmp, "w");
 			if (fp != 0) mr_dump(r, fp);
 			fclose(fp);
 			if (rb3_verbose >= 3) fprintf(stderr, "[M::%s::%.3f*%.2f] saved the current index to '%s'\n", __func__, rb3_realtime(), rb3_percent_cpu(), fn_tmp);
 		}
-	}
-	free(seq.s);
+    }
+    free(seq.s);
 
 end_build:
 	if (r == 0) return 1;

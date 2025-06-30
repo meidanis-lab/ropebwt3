@@ -89,7 +89,7 @@ static inline int rb3_comp(int c)
 
 static inline void rb3_fmd_set_intv(const rb3_fmi_t *f, int c, rb3_sai_t *ik)
 {
-	ik->x[0] = f->acc[c], ik->size = f->acc[c+1] - f->acc[c], ik->x[1] = f->acc[rb3_comp(c)], ik->info = 0;
+	ik->x[0] = f->acc[c], ik->size = f->acc[c+1] - f->acc[c], ik->info = 0; // [modified] removed ik->x[1] = f->acc[rb3_comp(c)]
 }
 
 static inline void rb3_fmi_init(rb3_fmi_t *f, rld_t *e, mrope_t *r)
